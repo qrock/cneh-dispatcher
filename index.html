@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диспетчер цеха</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#4CAF50">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: #1a1a1a; color: #eee; min-height: 100vh; }
+  .header { background: #252525; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #444; }
+  .header h1 { font-size: 22px; }
+  .header .user { font-size: 14px; color: #aaa; }
+  .header button { background: #c62828; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  .role-select { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 30px; }
+  .role-btn { background: #2c2c2c; border: 2px solid #555; padding: 40px 80px; font-size: 28px; color: #fff; border-radius: 12px; cursor: pointer; min-width: 350px; }
+  .role-btn:hover { background: #3a3a3a; border-color: #4CAF50; }
+  .login-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+  .login-box { background: #252525; padding: 40px; border-radius: 12px; width: 380px; text-align: center; }
+  .login-box h2 { margin-bottom: 25px; }
+  .login-box input { width: 100%; padding: 14px; font-size: 20px; text-align: center; letter-spacing: 8px; background: #1a1a1a; border: 2px solid #444; color: #fff; border-radius: 6px; margin-bottom: 15px; }
+  .login-box button { width: 100%; padding: 14px; font-size: 18px; background: #4CAF50; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+  .login-box .error { color: #ff5252; margin-top: 10px; min-height: 20px; }
+  .login-box .back { margin-top: 15px; color: #888; cursor: pointer; font-size: 14px; }
+  .admin-panel { padding: 25px; max-width: 900px; margin: 0 auto; }
+  .form-card { background: #252525; padding: 25px; border-radius: 10px; margin-bottom: 25px; }
+  .form-card h2 { margin-bottom: 20px; font-size: 20px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+  .form-field label { display: block; font-size: 13px; color: #aaa; margin-bottom: 5px; }
+  .form-field input, .form-field select, .form-field textarea { width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 15px; }
+  .form-field.full { grid-column: 1 / -1; }
+  .btn-primary { background: #4CAF50; color: #fff; border: none; padding: 12px 30px; font-size: 16px; border-radius: 6px; cursor: pointer; }
+  .task-list { background: #252525; padding: 20px; border-radius: 10px; }
+  .task-list h2 { margin-bottom: 15px; }
+  .task-item { background: #1a1a1a; padding: 15px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid; }
+  .task-item.urgent { border-color: #ff4444; }
+  .task-item.normal { border-color: #4CAF50; }
+  .task-item .info { flex: 1; }
+  .task-item .info b { font-size: 18px; }
+  .task-item .info .meta { font-size: 13px; color: #aaa; margin-top: 4px; }
+  .task-item .actions button { margin-left: 8px; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .btn-del { background: #c62828; color: #fff; }
+  .shop-panel { padding: 20px; }
+  .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .shop-header h2 { font-size: 24px; }
+  .refresh-indicator { font-size: 13px; color: #888; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+  .card { padding: 20px; border-radius: 10px; border: 4px solid; position: relative; }
+  .card.urgent { background: #3d1515; border-color: #ff4444; }
+  .card.normal { background: #15301a; border-color: #4CAF50; }
+  .card.inwork { opacity: 0.75; }
+  .card.done { opacity: 0.5; }
+  .card .badge { position: absolute; top: 10px; right: 10px; background: #000; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+  .card .badge.urgent { background: #c62828; }
+  .card .badge.done { background: #555; }
+  .card h3 { font-size: 26px; margin-bottom: 10px; padding-right: 80px; word-break: break-all; }
+  .card .info-line { font-size: 17px; margin: 6px 0; }
+  .card .info-line b { color: #fff; }
+  .card .worker-tag { background: #ff9800; color: #000; padding: 4px 10px; border-radius: 4px; font-size: 13px; display: inline-block; margin-bottom: 10px; font-weight: bold; }
+  .card .path-box { background: #000; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px; margin: 8px 0; word-break: break-all; }
+  .card .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .card .actions button { padding: 12px 18px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; flex: 1; min-width: 120px; }
+  .btn-copy { background: #2196F3; color: #fff; }
+  .btn-work { background: #FF9800; color: #000; }
+  .btn-done { background: #4CAF50; color: #fff; }
+  .empty { text-align: center; padding: 60px; font-size: 22px; color: #666; }
+  .toast { position: fixed; bottom: 30px; right: 30px; background: #4CAF50; color: #fff; padding: 15px 25px; border-radius: 6px; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s; z-index: 1000; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #c62828; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '';
+let state = { role: null, worker: null, tasks: [], refreshTimer: null };
+
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.role === 'admin') headers['X-Admin'] = '1';
+  if (state.role === 'worker' && state.worker) headers['X-Worker-Id'] = state.worker.id;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Ошибка' }));
+    throw new Error(err.detail || 'Ошибка запроса');
+  }
+  return res.json();
+}
+
+function render(html) { document.getElementById('app').innerHTML = html; }
+
+function showRoleSelect() {
+  state.role = null; state.worker = null; stopRefresh();
+  render(`
+    <div class="header"><h1>Диспетчер цеха</h1></div>
+    <div class="role-select">
+      <h2 style="color:#aaa; font-weight:normal;">Выберите режим работы</h2>
+      <button class="role-btn" onclick="showAdminLogin()">Админ (мастер/технолог)</button>
+      <button class="role-btn" onclick="showWorkerLogin()">Рабочий (у станка)</button>
+    </div>
+  `);
+}
+
+function showAdminLogin() {
+  render(`
+    <div class="header"><h1>Вход админа</h1></div>
+    <div class="login-screen">
+      <div class="login-box">
+        <h2>Пароль администратора</h2>
+        <input id="admin-pass" type="password" placeholder="" onkeypress="if(event.key==='Enter')doAdminLogin()">
+        <button onclick="doAdminLogin()">Войти</button>
+        <div class="error" id="admin-err"></div>
+        <div class="back" onclick="showRoleSelect()">Назад</div>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('admin-pass').focus(), 100);
+}
+
+async function doAdminLogin() {
+  const pass = document.getElementById('admin-pass').value;
+  try {
+    await api('/api/login/admin', { method: 'POST', body: JSON.stringify({ password: pass }) });
+    state.role = 'admin';
+    showAdminPanel();
+  } catch (e) { document.getElementById('admin-err').textContent = e.message; }
+}
+
+function showWorkerLogin() {
+  render(`
+    <div class="header"><h1>Вход рабочего</h1></div>
+    <div class="login-screen">
+      <div class="login-box">
+        <h2>Введите PIN</h2>
+        <input id="worker-pin" type="password" maxlength="6" placeholder="" onkeypress="if(event.key==='Enter')doWorkerLogin()">
+        <button onclick="doWorkerLogin()">Войти</button>
+        <div class="error" id="worker-err"></div>
+        <div class="back" onclick="showRoleSelect()">Назад</div>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('worker-pin').focus(), 100);
+}
+
+async function doWorkerLogin() {
+  const pin = document.getElementById('worker-pin').value;
+  try {
+    const w = await api('/api/login/worker', { method: 'POST', body: JSON.stringify({ pin }) });
+    state.worker = w; state.role = 'worker';
+    showShopPanel();
+  } catch (e) { document.getElementById('worker-err').textContent = e.message; }
+}
+
+function logout() { if (confirm('Выйти из системы?')) showRoleSelect(); }
+
+async function showAdminPanel() {
+  render(`
+    <div class="header">
+      <h1>Панель администратора</h1>
+      <div><span class="user">Режим: Админ</span> <button onclick="logout()">Выйти</button></div>
+    </div>
+    <div class="admin-panel">
+      <div class="form-card">
+        <h2>Новая задача</h2>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Срочность</label>
+            <select id="f-urg">
+              <option value="normal">Обычная</option>
+              <option value="urgent">СРОЧНО</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Тираж (кол-во)</label>
+            <input id="f-qty" type="number" placeholder="50">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full">
+            <label>Название УП</label>
+            <input id="f-up" placeholder="O12345_Op20">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full">
+            <label>Сетевой путь к папке</label>
+            <input id="f-path" placeholder="\\\\Server\\CNC\\Programs\\O12345\\">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full">
+            <label>Комментарий</label>
+            <textarea id="f-comment" rows="2"></textarea>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="createTask()">Добавить задачу</button>
+      </div>
+      <div class="task-list">
+        <h2>Активные задачи</h2>
+        <div id="admin-tasks"></div>
+      </div>
+    </div>
+  `);
+  startRefresh(loadAdminTasks);
+}
+
+async function loadAdminTasks() {
+  try {
+    const tasks = await api('/api/tasks');
+    state.tasks = tasks;
+    const box = document.getElementById('admin-tasks');
+    if (!box) return;
+    if (tasks.length === 0) { box.innerHTML = '<div class="empty">Задач пока нет</div>'; return; }
+    box.innerHTML = tasks.map(t => `
+      <div class="task-item ${t.urgency}">
+        <div class="info">
+          <b>${t.urgency === 'urgent' ? '🔥 ' : ''}${escapeHtml(t.up_name)}</b>
+          <div class="meta">
+            Тираж: ${t.qty} шт. · Статус: ${statusLabel(t.status)}${t.worker_name ? ' · ' + escapeHtml(t.worker_name) : ''}
+            ${t.path ? '<br>Путь: ' + escapeHtml(t.path) : ''}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-del" onclick="deleteTask(${t.id})">Удалить</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+async function createTask() {
+  const up = document.getElementById('f-up').value.trim();
+  const qty = parseInt(document.getElementById('f-qty').value);
+  if (!up) { toast('Введите название УП', true); return; }
+  if (!qty || qty <= 0) { toast('Введите корректный тираж', true); return; }
+  try {
+    await api('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify({
+        urgency: document.getElementById('f-urg').value,
+        up_name: up, qty: qty,
+        path: document.getElementById('f-path').value.trim(),
+        comment: document.getElementById('f-comment').value.trim()
+      })
+    });
+    ['f-up', 'f-qty', 'f-path', 'f-comment'].forEach(id => document.getElementById(id).value = '');
+    toast('Задача добавлена');
+    loadAdminTasks();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Удалить задачу?')) return;
+  try {
+    await api('/api/tasks/' + id, { method: 'DELETE' });
+    toast('Удалено');
+    loadAdminTasks();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function showShopPanel() {
+  render(`
+    <div class="header">
+      <h1>Задачи в цеху</h1>
+      <div>
+        <span class="user">${escapeHtml(state.worker.name)}</span>
+        <button onclick="logout()">Выйти</button>
+      </div>
+    </div>
+    <div class="shop-panel">
+      <div class="shop-header">
+        <h2>Ваши задачи</h2>
+        <div class="refresh-indicator" id="refresh-info">Обновление...</div>
+      </div>
+      <div class="cards" id="shop-cards"></div>
+    </div>
+  `);
+  startRefresh(loadShopTasks, 3000);
+}
+
+async function loadShopTasks() {
+  try {
+    const tasks = await api('/api/tasks');
+    state.tasks = tasks;
+    const box = document.getElementById('shop-cards');
+    const info = document.getElementById('refresh-info');
+    if (!box) return;
+    if (info) info.textContent = 'Обновлено: ' + new Date().toLocaleTimeString();
+    if (tasks.length === 0) { box.innerHTML = '<div class="empty">Задач нет</div>'; return; }
+    box.innerHTML = tasks.map(t => {
+      const isMine = t.worker_id == state.worker.id;
+      const canTake = t.status === 'new';
+      const inWork = t.status === 'inwork';
+      const done = t.status === 'done';
+      let actions = '';
+      if (canTake) actions = `<button class="btn-work" onclick="takeTask(${t.id})">ВЗЯТЬ В РАБОТУ</button>`;
+      else if (inWork && isMine) actions = `<button class="btn-done" onclick="finishTask(${t.id})">ГОТОВО</button>`;
+      else if (done && isMine) actions = `<span style="color:#aaa; font-size:14px;">Завершено вами</span>`;
+      else if (inWork && !isMine) actions = `<span style="color:#ff9800; font-size:14px;">В работе у ${escapeHtml(t.worker_name || 'другого')}</span>`;
+      return `
+        <div class="card ${t.urgency} ${t.status}">
+          <span class="badge ${t.urgency} ${done ? 'done' : ''}">${done ? 'ГОТОВО' : (t.urgency === 'urgent' ? '🔥 СРОЧНО' : 'ОБЫЧНАЯ')}</span>
+          ${t.worker_name ? `<div class="worker-tag">${escapeHtml(t.worker_name)}</div>` : ''}
+          <h3>${escapeHtml(t.up_name)}</h3>
+          <div class="info-line">Тираж: <b>${t.qty} шт.</b></div>
+          ${t.path ? `<div class="path-box">Путь: ${escapeHtml(t.path)}</div>` : ''}
+          ${t.comment ? `<div class="info-line" style="font-size:14px; color:#ccc;">${escapeHtml(t.comment)}</div>` : ''}
+          <div class="actions">
+            ${t.path ? `<button class="btn-copy" onclick="copyPath(\`${t.path.replace(/`/g, '\\`')}\`)">Копировать путь</button>` : ''}
+            ${actions}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    const info = document.getElementById('refresh-info');
+    if (info) info.textContent = 'Ошибка соединения';
+  }
+}
+
+async function takeTask(id) {
+  try {
+    await api('/api/tasks/' + id, { method: 'PATCH', body: JSON.stringify({ status: 'inwork' }) });
+    toast('Задача взята в работу');
+    loadShopTasks();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function finishTask(id) {
+  if (!confirm('Задача выполнена?')) return;
+  try {
+    await api('/api/tasks/' + id, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) });
+    toast('Отличная работа!');
+    loadShopTasks();
+  } catch (e) { toast(e.message, true); }
+}
+
+function copyPath(p) {
+  navigator.clipboard.writeText(p).then(() => toast('Путь скопирован'));
+}
+
+function startRefresh(fn, interval = 5000) {
+  stopRefresh(); fn();
+  state.refreshTimer = setInterval(fn, interval);
+}
+
+function stopRefresh() {
+  if (state.refreshTimer) { clearInterval(state.refreshTimer); state.refreshTimer = null; }
+}
+
+function statusLabel(s) {
+  return { new: 'Новая', inwork: 'В работе', done: 'Готово' }[s] || s;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+showRoleSelect();
+</script>
+</body>
+</html>
